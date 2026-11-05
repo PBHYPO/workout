@@ -142,7 +142,7 @@ h1 { font-family: var(--font-display); font-weight: 800; font-size: 46px; line-h
 .stat:first-child { padding-left: 0; border-left: 0; }
 .stat b { display: block; font-family: var(--font-display); font-weight: 800; font-size: 34px; line-height: 1; }
 .stat span { display: block; margin-top: 4px; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
-.cta { margin-top: 22px; }
+.cta { margin-top: 22px; display: flex; flex-direction: column; gap: 10px; }
 
 .facts { display: grid; grid-template-columns: 1fr 1fr; column-gap: 20px; margin-top: 8px; }
 .fact { padding: 10px 0; border-bottom: 1px solid var(--line); min-width: 0; }
@@ -174,7 +174,11 @@ h1 { font-family: var(--font-display); font-weight: 800; font-size: 46px; line-h
 .hint { margin-top: 14px; color: var(--muted); }
 
 /* história */
-.entry { display: grid; grid-template-columns: 54px 1fr; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--line); text-decoration: none; }
+.entry { border-bottom: 1px solid var(--line); }
+.elink { display: grid; grid-template-columns: 54px 1fr; gap: 12px; padding: 14px 0 8px; text-decoration: none; }
+.eact { padding: 0 0 6px 66px; }
+.eact .linkbtn { min-height: 40px; display: inline-flex; align-items: center; }
+.dup-note { margin-top: 12px; padding: 10px 14px; border-radius: 6px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); color: var(--muted); font-size: 14.5px; }
 .edate { display: flex; flex-direction: column; align-items: flex-start; line-height: 1; }
 .edate b { font-family: var(--font-display); font-weight: 800; font-size: 34px; }
 .edate span { margin-top: 3px; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
@@ -208,6 +212,8 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px
 .plates input:focus-visible + .plate { outline-color: var(--accent); }
 
 .ex { display: grid; grid-template-columns: 1fr auto; gap: 8px 4px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.ex .ins { grid-column: 1 / -1; justify-self: start; min-height: 36px; padding: 6px 0; }
+.ex:last-child .ins { display: none; }
 .ex .ex-nums { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .ex .ex-nums label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); min-width: 0; }
 .ex-list { display: flex; flex-direction: column; }
@@ -303,6 +309,24 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px
     clearTimeout(toast.t); toast.t = setTimeout(function () { toastEl.hidden = true; }, 3200);
   }
   function hasEx(e) { return Array.isArray(e.exercises) && e.exercises.length > 0; }
+  var PLAIN = /^-?\d+([.,]\d+)?$/;
+  function numOf(v) {
+    if (typeof v === 'number') return isFinite(v) ? v : 0;
+    var m = String(v == null ? '' : v).replace(',', '.').match(/-?\d+(?:\.\d+)?/);
+    return m ? parseFloat(m[0]) : 0;
+  }
+  function cellVal(v) { return (v === 0 || v == null) ? '' : v; }
+  function cellIn(v) {
+    v = String(v == null ? '' : v).trim();
+    if (!v) return 0;
+    return PLAIN.test(v) ? Number(v.replace(',', '.')) : v;
+  }
+  function kgText(v) {
+    if (v === 0 || v == null || v === '') return '';
+    if (typeof v === 'number') return fmt(v) + ' kg';
+    var s = String(v).trim();
+    return PLAIN.test(s) ? s.replace('.', ',') + ' kg' : s;
+  }
   function entriesOf(cid) {
     return S.entries.filter(function (e) { return e.clientId === cid; }).sort(function (a, b) {
       return a.date < b.date ? -1 : a.date > b.date ? 1 : (a.createdAt || 0) - (b.createdAt || 0);
@@ -328,7 +352,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px
     var best = {}, flags = {};
     es.forEach(function (e) {
       (e.exercises || []).forEach(function (x) {
-        var k = String(x.name || '').trim().toLowerCase(), kg = +x.kg || 0;
+        var k = String(x.name || '').trim().toLowerCase(), kg = numOf(x.kg);
         if (!k || kg <= 0) return;
         if (best[k] != null && kg > best[k]) { (flags[e.id] = flags[e.id] || {})[k] = true; }
         if (best[k] == null || kg > best[k]) best[k] = kg;
@@ -426,7 +450,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px
     var k = key.slice(3), rows = [];
     es.forEach(function (e) {
       (e.exercises || []).forEach(function (x) {
-        if (String(x.name || '').trim().toLowerCase() === k) rows.push({ date: e.date, kg: +x.kg || 0, vol: (+x.sets || 1) * (+x.reps || 0) });
+        if (String(x.name || '').trim().toLowerCase() === k) rows.push({ date: e.date, kg: numOf(x.kg), vol: (numOf(x.sets) || 1) * numOf(x.reps) });
       });
     });
     var reps = rows.length > 0 && rows.every(function (r) { return r.kg === 0; });
@@ -517,7 +541,8 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px
     h += '<div class="stats"><div class="stat"><b class="num">' + tr.length + '</b><span>Tréningy</span></div>' +
       '<div class="stat"><b class="num">' + wk + (c.perWeek ? '/' + c.perWeek : '') + '</b><span>Tento týždeň</span></div>' +
       '<div class="stat"><b>' + (tr.length ? esc(relDay(tr[tr.length - 1].date)) : '–') + '</b><span>Posledný</span></div></div>';
-    h += '<div class="cta"><a class="btn block" href="#z-' + esc(id) + '">Zapísať tréning</a></div>';
+    h += '<div class="cta"><a class="btn block" href="#z-' + esc(id) + '">Zapísať tréning</a>' +
+      (tr.length ? '<a class="btn block ghost" href="#d-' + esc(id) + '-' + esc(tr[tr.length - 1].id) + '">Duplikovať posledný tréning</a>' : '') + '</div>';
 
     var facts = [];
     if (c.startWeight != null) facts.push(['Štartovacia hmotnosť', fmt(c.startWeight) + ' kg' + (c.startDate ? ' · ' + fShort.format(dObj(c.startDate)) : '')]);
@@ -544,13 +569,14 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px
         if (e.waist != null) meas += '<span class="num">pás ' + fmt(e.waist) + ' cm</span>';
         var ex = (e.exercises || []).map(function (x) {
           var k = String(x.name || '').trim().toLowerCase();
-          var v = (x.sets || '?') + '×' + (x.reps || '?') + ((+x.kg) ? ' · ' + fmt(+x.kg) + ' kg' : '');
+          var kt = kgText(x.kg), v = (x.sets || '?') + '×' + (x.reps || '?') + (kt ? ' · ' + kt : '');
           return '<li><span class="en">' + esc(x.name) + '</span><span class="ev num">' + esc(v) + '</span>' + (flags[e.id] && flags[e.id][k] ? '<span class="pr">rekord</span>' : '') + '</li>';
         }).join('');
         var yearTxt = d.getFullYear() !== new Date().getFullYear() ? ' ' + d.getFullYear() : '';
-        h += '<a class="entry" href="#z-' + esc(id) + '-' + esc(e.id) + '"><div class="edate"><b>' + esc(fDay.format(d)) + '</b><span>' + esc(fMon.format(d).replace('.', '')) + esc(yearTxt) + '</span></div><div class="ebody">' +
+        h += '<div class="entry"><a class="elink" href="#z-' + esc(id) + '-' + esc(e.id) + '"><div class="edate"><b>' + esc(fDay.format(d)) + '</b><span>' + esc(fMon.format(d).replace('.', '')) + esc(yearTxt) + '</span></div><div class="ebody">' +
           (meas ? '<div class="meas">' + meas + '</div>' : '') + (ex ? '<ul class="exl">' + ex + '</ul>' : '') +
-          (e.note ? '<p class="enote">' + esc(e.note) + '</p>' : '') + '</div></a>';
+          (e.note ? '<p class="enote">' + esc(e.note) + '</p>' : '') + '</div></a>' +
+          (hasEx(e) ? '<div class="eact"><a class="linkbtn" href="#d-' + esc(id) + '-' + esc(e.id) + '">Duplikovať tréning</a></div>' : '') + '</div>';
       });
     }
     return h;
@@ -590,27 +616,30 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px
     return '<div class="ex"><input class="ex-name" list="ex-names" placeholder="Cvik, napr. Drep" aria-label="Názov cviku" autocapitalize="sentences" value="' + esc(x.name || '') + '">' +
       '<button type="button" class="icon-btn" data-act="rm-row" aria-label="Odstrániť cvik">×</button>' +
       '<div class="ex-nums">' +
-      '<label>Série<input class="ex-sets" type="number" inputmode="numeric" min="0" step="1" value="' + esc(x.sets == null ? '' : x.sets) + '"></label>' +
-      '<label>Opakovania<input class="ex-reps" type="number" inputmode="numeric" min="0" step="1" value="' + esc(x.reps == null ? '' : x.reps) + '"></label>' +
-      '<label>Váha (kg)<input class="ex-kg" type="number" inputmode="decimal" min="0" step="any" value="' + esc(x.kg == null ? '' : x.kg) + '"></label>' +
-      '</div></div>';
+      '<label>Série<input class="ex-sets" type="number" inputmode="numeric" min="0" step="1" value="' + esc(cellVal(x.sets)) + '"></label>' +
+      '<label>Opakovania<input class="ex-reps" type="text" autocomplete="off" placeholder="napr. 10" value="' + esc(cellVal(x.reps)) + '"></label>' +
+      '<label>Váha<input class="ex-kg" type="text" autocomplete="off" placeholder="napr. 60" value="' + esc(cellVal(x.kg)) + '"></label>' +
+      '</div><button type="button" class="linkbtn ins" data-act="ins-row">+ Vložiť cvik sem</button></div>';
   }
   function lastTraining(cid, exceptId) {
     var t = entriesOf(cid).filter(function (e) { return hasEx(e) && e.id !== exceptId; });
     return t.length ? t[t.length - 1] : null;
   }
-  function entryFormView(cid, eid) {
+  function entryFormView(cid, eid, from) {
     var c = S.clients.filter(function (x) { return x.id === cid; })[0];
     if (!c) return notFound();
     var e = eid ? S.entries.filter(function (x) { return x.id === eid; })[0] : null;
     if (eid && !e) return notFound();
-    var v = e || { date: todayISO(), exercises: [{ sets: 3, reps: 10 }] };
+    var src = from ? S.entries.filter(function (x) { return x.id === from; })[0] : null;
+    if (from && !src) return notFound();
+    var v = e || (src ? { date: todayISO(), exercises: JSON.parse(JSON.stringify(src.exercises || [])) } : { date: todayISO(), exercises: [{ sets: 3, reps: 10 }] });
     var rows = (v.exercises && v.exercises.length ? v.exercises : [{ sets: 3, reps: 10 }]).map(rowHtml).join('');
     var names = exerciseStats(entriesOf(cid)).map(function (x) { return x.name; });
     COMMON.forEach(function (n) { if (names.map(function (x) { return x.toLowerCase(); }).indexOf(n.toLowerCase()) < 0) names.push(n); });
     var last = lastTraining(cid, eid);
     var h = '<div class="bar-top"><a class="back" href="#k-' + esc(cid) + '">← ' + esc(c.name) + '</a></div>';
-    h += '<h1 style="font-size:38px">' + (e ? 'Upraviť záznam' : 'Nový záznam') + '</h1>';
+    h += '<h1 style="font-size:38px">' + (e ? 'Upraviť záznam' : src ? 'Duplikovaný tréning' : 'Nový záznam') + '</h1>';
+    if (src) h += '<p class="dup-note">Cviky sú skopírované z tréningu ' + esc(fShort.format(dObj(src.date))) + ' Prepíš váhu a opakovania a ulož.</p>';
     h += '<form id="entry-form" data-cid="' + esc(cid) + '" data-eid="' + esc(eid || '') + '" autocomplete="off" novalidate>';
     h += field('e-date', 'Dátum', inp('e-date', 'date', v.date, 'required'));
     h += '<div class="grid2">' + field('e-weight', 'Hmotnosť (kg)', inp('e-weight', 'number', v.weight, 'inputmode="decimal" min="20" max="300" step="any" placeholder="voliteľné"')) +
@@ -683,6 +712,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px
     if (h === 'novy') return { v: 'cform' };
     if (p[0] === 'uprav' && p[1]) return { v: 'cform', id: p[1] };
     if (p[0] === 'z' && p[1]) return { v: 'eform', cid: p[1], eid: p[2] };
+    if (p[0] === 'd' && p[1] && p[2]) return { v: 'eform', cid: p[1], from: p[2] };
     return { v: 'list' };
   }
   function render() {
@@ -691,7 +721,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px
     else if (!S.ready) html = loadingView();
     else if (r.v === 'client') html = clientView(r.id);
     else if (r.v === 'cform') html = clientFormView(r.id);
-    else if (r.v === 'eform') html = entryFormView(r.cid, r.eid);
+    else if (r.v === 'eform') html = entryFormView(r.cid, r.eid, r.from);
     else html = listView();
     app.innerHTML = html;
     S.mounted = S.ready ? location.hash : null;
@@ -737,8 +767,8 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px
           return {
             name: row.querySelector('.ex-name').value.trim(),
             sets: num(row.querySelector('.ex-sets').value) || 0,
-            reps: num(row.querySelector('.ex-reps').value) || 0,
-            kg: num(row.querySelector('.ex-kg').value) || 0
+            reps: cellIn(row.querySelector('.ex-reps').value),
+            kg: cellIn(row.querySelector('.ex-kg').value)
           };
         }).filter(function (x) { return x.name; });
         var weight = num(f.elements['e-weight'].value), waist = num(f.elements['e-waist'].value);
@@ -822,12 +852,13 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px
     return /[";\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
   }
   function cnum(n) { return n == null ? '' : String(n).replace('.', ','); }
+  function cellCsv(v) { return typeof v === 'number' ? cnum(v) : (v == null ? '' : v); }
   async function exportCsv() {
     var names = {}; S.clients.forEach(function (c) { names[c.id] = c.name; });
     var rows = [['Klient', 'Dátum', 'Hmotnosť (kg)', 'Pás (cm)', 'Cvik', 'Série', 'Opakovania', 'Váha (kg)', 'Poznámka']];
     S.entries.slice().sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; }).forEach(function (e) {
       var nm = names[e.clientId] || '';
-      if (hasEx(e)) e.exercises.forEach(function (x) { rows.push([nm, e.date, cnum(e.weight), cnum(e.waist), x.name, x.sets, x.reps, cnum(x.kg), e.note]); });
+      if (hasEx(e)) e.exercises.forEach(function (x) { rows.push([nm, e.date, cnum(e.weight), cnum(e.waist), x.name, x.sets, cellCsv(x.reps), cellCsv(x.kg), e.note]); });
       else rows.push([nm, e.date, cnum(e.weight), cnum(e.waist), '', '', '', '', e.note]);
     });
     try { await saveFile('trenersky-dennik-' + todayISO() + '.csv', '\uFEFF' + rows.map(function (r) { return r.map(csvCell).join(';'); }).join('\r\n'), 'text/csv;charset=utf-8'); }
@@ -843,6 +874,10 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px
       if (c && box) box.innerHTML = progressInner(c);
     }
     else if (a === 'add-row') addRow();
+    else if (a === 'ins-row') {
+      var cur = t.closest('.ex');
+      if (cur) { cur.insertAdjacentHTML('afterend', rowHtml({ sets: 3 })); cur.nextElementSibling.querySelector('.ex-name').focus(); }
+    }
     else if (a === 'rm-row') { var row = t.closest('.ex'); if (row) row.remove(); }
     else if (a === 'copy-last') copyLast(t);
     else if (a === 'del-ask') askDelete(t);
